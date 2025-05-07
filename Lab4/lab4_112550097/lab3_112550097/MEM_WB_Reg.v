@@ -1,0 +1,36 @@
+module MEM_WB_Reg(
+    input wire clk,
+    input wire rst,
+    input wire [31:0] pc_i,
+    input wire [31:0] ALUOut_i,
+    input wire [31:0] data_R_i,
+    input wire [4:0] rs_WB_i,
+    input wire [2:0] control_i,  
+    /*
+    WB           / M        
+    regW/memToReg/ memR/memW
+    */
+    output reg  [31:0] pc_o,
+    output reg  [31:0] ALUOut_o,
+    output reg  [31:0] data_R_o,
+    output reg  [4:0] rs_WB_o,
+    output reg  [2:0] control_o
+);
+
+always @(posedge clk, negedge rst) begin
+        if (~rst) begin
+            pc_o <= 32'b0;
+            ALUOut_o <= 32'b0;
+            data_R_o <= 32'b0;
+            rs_WB_o <= 5'b0;
+            control_o <= 3'b0;
+        end else begin
+            pc_o <= pc_i;
+            ALUOut_o <= ALUOut_i;
+            data_R_o <= data_R_i;
+            rs_WB_o <= rs_WB_i;
+            control_o <= control_i;
+        end
+end
+
+endmodule
