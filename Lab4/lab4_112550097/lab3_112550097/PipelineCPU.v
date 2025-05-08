@@ -101,6 +101,25 @@ Control u_ctrl(
     .PCSel    (PCSel_id)
 );   
 
+
+// ================change here====================
+// add mux after readData1 to decide use data from "RF" or "EX Forwarding"
+Mux2to1 m_Mux_RF_EX_ForwardA(.size(32))(
+    .sel(id_ForwardA),
+    .s0(readData1),
+    .s1(ALUOut_ex),
+    .out(readData1_muxed)        // readData1 after selected by muxed
+)
+
+// add mux after readData2 to decide use data from "RF" or "EX Forwarding"
+Mux2to1 m_Mux_RF_EX_ForwardB(.size(32))(
+    .sel(id_ForwardB),
+    .s0(readData2),
+    .s1(ALUOut_ex),
+    .out(readData2_muxed)        // readData2 after selected by muxed
+)
+// ==================================================
+
 // For Student:
 // Do not change the Register instance name!
 // Or you will fail validation.
@@ -125,8 +144,8 @@ assign r = m_Register.regs;
 
 wire BrEq, BrLT;
 BranchComp m_BranchComp(
-    .A(readData1),
-    .B(readData2),
+    .A(readData1_muxed),
+    .B(readData2_muxed),
     .BrEq(BrEq),
     .BrLT(BrLT)
 );
@@ -157,7 +176,7 @@ ID_EX_Reg m_ID_EX_Reg(
    // pc
    .pc_i(pc_id),
    // data
-   .dataR1_i(readData1), .dataR2_i(readData2),
+   .dataR1_i(readData1_muxed), .dataR2_i(readData2_muxed),
    .imm_i (imm_id),
    // rs_WB
     .rs_WB_i(rs_WB_id),
@@ -323,6 +342,14 @@ Mux3to1 #(.size(32)) m_Mux_WriteData(
 
 wire [31:0] pc_j_to;
 wire [31:0] pc_branch;
+
+// add an control signal "PCorR1", must add on control.v too!!!!!!!!!!!!!!
+Mux2to1 #(.size(32)) m_Mux_Adder_src(
+    .sel(PCorR1),
+    .s0(pc_if),
+    .s1(readData1)
+)
+
 Adder m_Adder_2(
     .a(pc_id),
     .b(imm_id),
