@@ -4,8 +4,13 @@ module HazardDetection(
     input wire [4:0] ex_Rd,       // Destination register in EX stage
     input wire [4:0] mem_Rd,       // Destination register in MEM stage
     input wire mem_MemRead,
+    input wire [1:0] PCSel,      // Branch control signal
+    input wire [1:0] Br_J_Sel,
+    input wire is_jump_flag,
+    input wire is_jalr_flag,
     output reg RePC,             // re-fetch the flushed instruction
-    output reg Flush_HD    // flush IF/ID reg & ID/EX reg
+    output reg [1:0] Flush_HD,    // flush IF/ID reg & ID/EX reg
+    output reg stall_if
 );
 
     // This unit checks for potential data hazards that cannot be resolved by forwarding.
@@ -31,14 +36,37 @@ module HazardDetection(
 
 
     always @(*) begin
-        // if lw in EX stage and the destination register is used in ID stage
+        stall_if = 0;
+        // 如果ex stage計算出來的load word destination 是 id stage的source register
+        // 並且mem_read是1 (代表 load word)
         if (mem_MemRead && (ex_Rd != 0) && (ex_Rd == id_R1 || ex_Rd == id_R2)) begin
-            Flush_HD = 1'b1; // Flush IF/ID and ID/EX registers
-            RePC = 1'b1; // Re-fetch the instruction in IF stage
-        end else begin
-            Flush_HD = 1'b0; // No flush needed
+            // stall 並且 re-fetch
+            RePC = 1'b1; // Re-fetch the instruction in IF stage     
+            Flush_HD = 2'b01;
+            stall_if = 1;
+        end
+        // Check for branch hazard
+        // Branch hazard occurs when PCSel is 1 (branch taken) and the branch depends on a register
+        // that is being written to in the MEM stage
+        else if ((PCSel == 2'b01) && Br_J_Sel == 2'b01 && (ex_Rd != 0) && (ex_Rd == id_R1 || ex_Rd == id_R2))begin
+            RePC = 1'b1;
+            Flush_HD = 2'b00;
+            stall_if =1 ;
+        end
+        else if ((PCSel == 2'b01) && (Br_J_Sel == 2'b01)) begin // b type
+            Flush_HD = 2'b11; // Flush IF/ID and ID/EX registers
+            RePC = 1'b0; // Re-fetch the instruction in IF stage
+        end
+        else if ((is_jump_flag) || (is_jalr_flag)) begin // j type in ex
+            Flush_HD = 2'b11; // Flush IF/ID and ID/EX
+            RePC = 1'b0; // Re-fetch the instruction in IF stage
+        end
+        else begin
+            Flush_HD = 2'b00; // No flush needed
             RePC = 1'b0; // No re-fetch needed
         end
     end
 
 endmodule
+
+
